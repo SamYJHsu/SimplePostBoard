@@ -2,6 +2,21 @@ const StatusDescription = require('../../core/error')
 const Mongo = require('../../common/db-client')
 const { v4 } = require('uuid')
 const logger = require('../../common/log')
+const { Logger } = require('mongodb')
+
+async function DFS(postIdx, dbCollection, postList){
+    postList.push(postIdx)
+    result = await dbCollection.findOne({postIdx: postIdx})
+    let replyList = result.replyList
+    if (replyList.length===0){
+        return postList
+    }
+    let width = replyList.length
+    for (let i=0; i< width; i++){
+        postList = await DFS(replyList[i], dbCollection, postList)
+    }
+    return postList
+}
 
 class MsgController{
     async addPost(ctx, next){
@@ -44,7 +59,7 @@ class MsgController{
                     msg: msg,
                     createdAt: createdAt,
                     updatedAt: createdAt,
-                    replyIdx: null
+                    replyList: []
                 }
                 result = await postsTable.insertOne(postInfo)
                 logger.logInfo(`[post/add] DB operation result : ${result}`)
@@ -61,7 +76,7 @@ class MsgController{
                     postIdx: result.ops[0].postIdx,
                     msg: result.ops[0].msg,
                     email: result.ops[0].email,
-                    replyIdx: result.ops[0].replyIdx,
+                    replyList: result.ops[0].replyList,
                     updatedAt: new Date(result.ops[0].updatedAt).toISOString()
                 }
                 ctx.status = StatusDescription.Ok.statusCode
@@ -112,7 +127,7 @@ class MsgController{
                     postIdx: result.postIdx,
                     msg: result.msg,
                     email: result.email,
-                    replyIdx: result.replyIdx,
+                    replyList: result.replyList,
                     updatedAt: new Date(result.updatedAt).toISOString()
                 }
                 ctx.status = StatusDescription.Ok.statusCode
@@ -210,7 +225,7 @@ class MsgController{
                         msg: result.value.msg,
                         email: result.value.email,
                         postIdx: result.value.postIdx,
-                        replyIdx: result.value.replyIdx,
+                        replyList: result.value.replyList,
                         updatedAt: new Date(result.value.updatedAt).toISOString()
                     }
                     ctx.status = StatusDescription.Ok.statusCode
@@ -290,36 +305,33 @@ class MsgController{
             // check if account of remove request and account who created post is same
             result = await postsTable.findOne({postIdx: postIdx, email: email})
             logger.logInfo(`[post/remove] check post: ${JSON.stringify(result)}`)
-            // get response postIdx of post which would be removed
             if (result){
-                let postIdx = result.replyIdx
                 //check if account and pw correct
                 let userInfo = await usersTable.findOne({email: email, pw: pw})
                 if (userInfo){
-                    // remove the assigned post
-                    result = await postsTable.findOneAndDelete(
-                        {postIdx: postIdx, email: email}
-                    )
-                    if (result.ok !== 1){
-                        ctx.status = StatusDescription.DBOperationError.statusCode
-                        ctx.body = {
-                            errorCode: StatusDescription.DBOperationError.errorCode,
-                            stat: StatusDescription.DBOperationError.description
+                    // dfs find all postidx then delete it
+                    let postIdxList = []
+                    postIdxList = await DFS(postIdx, postsTable, postIdxList)
+                    logger.logInfo(`[post/remove] remove list: ${postIdxList}`)
+                    let _bugFlag = false
+                    for (let i=0; i<postIdxList.length; i++){
+                        // result = await postsTable.findOne({postIdx: postIdxList[i]})
+                        result = await postsTable.findOneAndDelete({postIdx: postIdxList[i]})
+                        if (result.ok !== 1){
+                            _bugFlag = True
+                            ctx.status = StatusDescription.DBOperationError.statusCode
+                            ctx.body = {
+                                errorCode: StatusDescription.DBOperationError.errorCode,
+                                stat: StatusDescription.DBOperationError.description
+                            }
+                            logger.logResponse(ctx)
+                            return
                         }
-                        logger.logResponse(ctx)
-                        return
                     }
-                    // remove dependency post until replyIdx is null(no any response post)
-                    while((result.ok === 1) && result.value.replyIdx){
-                        logger.logInfo(`[post/remove] to remove postIdx: ${result.value.replyIdx}`)
-                        result = await postsTable.findOneAndDelete({postIdx: result.value.replyIdx})
-                    }
-                    if (!result) throw new Error('remove failed')
-
                     ctx.status = StatusDescription.Ok.statusCode
                     ctx.body = {
                         errorCode: StatusDescription.Ok.errorCode,
-                        stat: StatusDescription.Ok.description
+                        stat: StatusDescription.Ok.description + `, delete ${postIdxList.length} documents`
                     }
                     logger.logResponse(ctx)
                 } else{
@@ -396,7 +408,7 @@ class MsgController{
             if (result){
                 let postInfo = await postsTable.findOne({postIdx: replyIdx})
                 if (postInfo){
-                    postInfo.replyIdx = newPostIdx
+                    postInfo.replyList.push(newPostIdx)
                     postInfo = await postsTable.updateOne(
                         {postIdx: replyIdx},
                         {$set: postInfo}
@@ -408,7 +420,7 @@ class MsgController{
                             msg: msg,
                             createdAt: createdAt,
                             updatedAt: createdAt,
-                            replyIdx: null
+                            replyList: []
                         }
                         result = await postsTable.insertOne(postInfo)
                         logger.logInfo(`[post/reply] DB operation result: ${result}`)
@@ -416,7 +428,7 @@ class MsgController{
                             postIdx: result.ops[0].postIdx,
                             msg: result.ops[0].msg,
                             email: result.ops[0].email,
-                            replyIdx: result.ops[0].replyIdx,
+                            replyList: result.ops[0].replyList,
                             updatedAt: new Date(result.ops[0].updatedAt).toISOString()
                         }
 
