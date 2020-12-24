@@ -1,0 +1,13 @@
+{
+    "server": {
+        "port": 3200
+    },
+    "DB": {
+        "db": "mongodb://localhost:27017/msgboard",
+        "db_name": "msgDB"
+    },
+    "para": {
+        "pwMinLength": 6,
+        "photoMaxKbSize": 100
+    }
+}
