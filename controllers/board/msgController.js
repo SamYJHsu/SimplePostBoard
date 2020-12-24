@@ -22,7 +22,8 @@ class MsgController{
     async addPost(ctx, next){
         // create new post
         try{
-            const { msg } = ctx.request.body || ''
+            let { msg } = ctx.request.body
+            msg = msg ? (msg) : ''
             const { email } = ctx.request.body
             const { pw } = ctx.request.body
             const newPostIdx = v4()
@@ -85,6 +86,7 @@ class MsgController{
                     stat: StatusDescription.Ok.description,
                     postInfo: postInfo
                 }
+                logger.logResponse(ctx)
             } else {
                 ctx.status = StatusDescription.AccountPwNotMatch.statusCode
                 ctx.body = {
@@ -159,7 +161,8 @@ class MsgController{
     async modifyPost(ctx, next){
         // modify post
         try{
-            const { msg } = ctx.request.body || ''
+            let { msg } = ctx.request.body
+            msg = msg ? (msg) : ''
             const { email } = ctx.request.body
             const { pw } = ctx.request.body
             const { postIdx } = ctx.request.body
@@ -364,7 +367,8 @@ class MsgController{
     async replyPost(ctx, next){
         // return specific post
         try{
-            const { msg } = ctx.request.body || ''
+            let { msg } = ctx.request.body
+            msg = msg ? (msg) : ''
             const { email } = ctx.request.body
             const { pw } = ctx.request.body
             const { replyIdx } = ctx.request.body
