@@ -7,8 +7,10 @@ const logger = winston.createLogger({
 })
 logger.info(`[${new Date().toISOString()}] Logger init`)
 class logging{
-    static logInfo(info){
-        logger.info(`[${new Date().toISOString()}] ${info}`)
+    static logInfo(...infos){
+        let info = `[${new Date().toISOString()}]`
+        info = info.concat(infos.map(element => ' '+element))
+        logger.info(info)
     }
     static logResponse(ctx){
         logger.info(`[${new Date().toISOString()}] status: ${ctx.status}`)
