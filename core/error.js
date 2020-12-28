@@ -64,7 +64,7 @@ const StatusDescription = {
         errorCode: '10012',
         description: 'DB operation error'
     },
-    FeildError: {
+    ContentNull: {
         statusCode: 406,
         errorCode: '10013',
         description: 'Message must not be null'
@@ -78,6 +78,11 @@ const StatusDescription = {
         statusCode: 406,
         errorCode: '10015',
         description: 'Post not found'
+    },
+    EmailNotRegister: {
+        statusCode: 406,
+        errorCode: '10016',
+        description: 'Can not found account, please registered email first'
     },
     ServerInternalError: {
         statusCode: 500,

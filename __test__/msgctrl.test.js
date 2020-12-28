@@ -31,12 +31,15 @@ postRequestUnvalidAcc.email = 'test4@test.com'
 let postIdxGlobal
 let replyIdxGlobal
 
-beforeAll(async () => {
+beforeAll(async done => {
     logger.logInfo(`Jest test start`)
+    logger.logInfo(`Register test account first`)
     await Init.init()
     await request(app.callback()).post('/user/register').send(user1)
     await request(app.callback()).post('/user/register').send(user2)
-    await request(app.callback()).post('/user/register').send(user3)
+    const ret = await request(app.callback()).post('/user/register').send(user3)
+    expect(ret.status).toBe(StatusDescription.Ok.statusCode)
+    done()
 })
 afterAll(async () => {
     await request(app.callback()).post('/user/remove').send(user1)
@@ -79,11 +82,11 @@ describe('Test MsgController', () => {
 
         logger.logInfo('Request without email and pw')
         res = await request(app.callback()).post('/post/add').send(postWithoutEmail)
-        expect(res.status).toBe(StatusDescription.FeildError.statusCode)
+        expect(res.status).toBe(StatusDescription.FieldNull.statusCode)
 
         logger.logInfo('Request without msg')
         res = await request(app.callback()).post('/post/add').send(user3)
-        expect(res.status).toBe(StatusDescription.FeildError.statusCode)
+        expect(res.status).toBe(StatusDescription.ContentNull.statusCode)
 
         let postReqPwNotCorrect = Object.assign({}, postRequestValid)
         postReqPwNotCorrect.pw = '222222'
